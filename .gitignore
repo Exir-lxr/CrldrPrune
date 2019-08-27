@@ -1,0 +1,8 @@
+checkpoints/
+ckpt_731/
+log/
+mobilenetv2_ckp/
+log.txt
+old1.mat
+score.txt
+state.txt
