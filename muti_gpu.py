@@ -86,6 +86,12 @@ for i in range(GPU):
                 cross_entropy = tf.reduce_mean(
                     tf.losses.softmax_cross_entropy(y_b, out, label_smoothing=0.1, weights=0.4))
 
+            with tf.name_scope('prune_statistic'):
+                gradient_builder.set_y(cross_entropy)
+                gradient_builder.build_flow_on_conv()
+                SOURCE_VARIABLES['var_in_statistic'] += gradient_builder.get_source_variables().copy()
+                score_builder.set_gard_var_wise_list(gradient_builder.post_process_and_get_tensor_list())
+
             with tf.name_scope('total_loss_'+str(i)):
                 total_loss = cross_entropy + tf.add_n(tf.losses.get_regularization_losses())
                 loss_list.append(tf.div(total_loss, 1.0 * GPU))
@@ -139,8 +145,10 @@ for var in tf.global_variables():
         if 'ExponentialMovingAverage' not in var.name and 'RMSProp' not in var.name:
             print(var)
 
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
 
-with tf.Session() as sess:
+with tf.Session(config=config) as sess:
 
     def initialize():
         sess.run(tf.global_variables_initializer())
@@ -175,7 +183,7 @@ with tf.Session() as sess:
         # take ema
         # sess.run(EMA_TAKE)
 
-        for i in range(int(train_size/BATCH_SIZE*GPU)):
+        for i in range(int(train_size/BATCH_SIZE*GPU/10000)):
             sess.run(STATISTIC_UPDATE, feed_dict={train_flag: False})
             print('statistic: ', i, 'of', int(train_size/BATCH_SIZE*GPU))
 
@@ -194,11 +202,10 @@ with tf.Session() as sess:
         all_var.save(sess, './ckpt_731/snas.ckpt')
         print('Finish saving.')
 
-        for t in tasks:
-            t.join()
+        #for t in tasks:
+        #    t.join()
 
         print('Finish statistic.')
-
 
     def train_step():
         def enqueue_train_batches():
@@ -222,7 +229,6 @@ with tf.Session() as sess:
 
         sess.run(EMA_TAKE)
         all_var.save(sess, './ckpt_731/snas.ckpt')
-
 
     def evaluate_step():
         reader = validation_set_reader(os.path.join(DATA_PATH, 'val'),
@@ -254,4 +260,4 @@ with tf.Session() as sess:
         with open('./ckpt_731/log.txt', 'a') as file:
             file.write(str(all_acc)+'\n')
 
-    statistic_and_update_mask()
+    evaluate_step()

@@ -8,7 +8,7 @@ from XavierLib.imagenet_label import *
 import threading
 
 
-START = 'D:'# '/media/xavierliu/Seagate Backup Plus Drive'
+START = '/home/dl/DATA/ImageNet'# '/media/xavierliu/Seagate Backup Plus Drive'
 
 # Config
 EPOCHS = 20
@@ -30,7 +30,7 @@ else:
 train_size = 1281167
 validation_size = 50000
 
-converter = wnid_to_2015(START+'/train_data/ImageNet/data/imagenet_lsvrc_2015_synsets.txt')
+converter = wnid_to_2015(START+'/imagenet_lsvrc_2015_synsets.txt')
 
 with tf.name_scope('read_data'):
 

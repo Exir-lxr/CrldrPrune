@@ -287,7 +287,7 @@ class average_gradients_flow_builder(object):
                         self.return_list.append(acls.variable_avg)
                 elif self.built_method == 'VAR':
                     print('Get the tensor list of vv, where vv*vv\' = E(GG\')')
-                    for acls in  self.acls_list:
+                    for acls in self.acls_list:
                         e, v = tf.self_adjoint_eig(acls.variable_avg)
                         vv = tf.multiply(v, tf.sqrt(tf.maximum(e, 0)))
                         # vv*vv' = acls.variable_avg
@@ -520,7 +520,7 @@ class score_update_flow_builder(object):
             return mask_to_update, py_weights
 
     def compute_score_and_remove_last(self, sess, last_num=1):
-        # sess.run(self.update_masks_for_zero_var_op_list)
+        sess.run(self.update_masks_for_zero_var_op_list)
         # need to update parameters in bn
         print('Update mask for zero variance...')
         weights_list = sess.run(self.weights_list)
@@ -608,3 +608,5 @@ if __name__ == '__main__':
     sess = tf.Session()
     sess.run(tf.global_variables_initializer())
     print(sess.run([show1,show2]))
+
+    # print(sess.run(tf.self_adjoint_eig(a)))
