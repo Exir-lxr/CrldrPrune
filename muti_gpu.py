@@ -18,7 +18,7 @@ SOURCE_VARIABLES = {}
 START = '/home/dl/DATA/ImageNet'# '/media/xavierliu/Seagate Backup Plus Drive'
 
 # Train Config
-GPU = 4
+GPU = 1
 EPOCHS = 20
 BATCH_SIZE = 32 * GPU
 DATA_PATH = '/home/dl/DATA/ImageNet/ILSVRC/Data/CLS-LOC'
@@ -53,6 +53,10 @@ with tf.name_scope('read_data'):
 
 loss_list = []
 acc_list = []
+
+with tf.device('/gpu:1'):
+    gradient_builder = cl.average_gradients_flow_builder()
+
 for i in range(GPU):
     [x_b, y_b] = input_list[i]
     if i == 0:
@@ -63,7 +67,6 @@ for i in range(GPU):
 
                 statistic_builder = cl.statistic_flow_builder()
                 score_builder = cl.score_update_flow_builder()
-                gradient_builder = cl.average_gradients_flow_builder()
                 ema_builder = ex.exponential_moving_average_builder()
 
                 out, restore_var = mobilenet_v2_224(x_b, train_flag, statistic_builder, score_builder, gradient_builder,
@@ -80,17 +83,10 @@ for i in range(GPU):
 
                 STATISTIC_UPDATE = []
                 STATISTIC_UPDATE += statistic_builder.get_update_op().copy()
-                STATISTIC_UPDATE += gradient_builder.get_update_op_list().copy()
 
             with tf.name_scope('cross_entropy_'+str(i)):
                 cross_entropy = tf.reduce_mean(
                     tf.losses.softmax_cross_entropy(y_b, out, label_smoothing=0.1, weights=0.4))
-
-            with tf.name_scope('prune_statistic'):
-                gradient_builder.set_y(cross_entropy)
-                gradient_builder.build_flow_on_conv()
-                SOURCE_VARIABLES['var_in_statistic'] += gradient_builder.get_source_variables().copy()
-                score_builder.set_gard_var_wise_list(gradient_builder.post_process_and_get_tensor_list())
 
             with tf.name_scope('total_loss_'+str(i)):
                 total_loss = cross_entropy + tf.add_n(tf.losses.get_regularization_losses())
@@ -120,6 +116,13 @@ for i in range(GPU):
                 accuracy = tf.reduce_mean(tf.cast(correct, tf.float32))
                 acc_list.append(accuracy)
 
+with tf.device('/gpu:1'):
+    with tf.name_scope('prune_statistic'):
+        gradient_builder.set_y(cross_entropy)
+        gradient_builder.build_flow_on_conv()
+        SOURCE_VARIABLES['var_in_statistic'] += gradient_builder.get_source_variables().copy()
+        STATISTIC_UPDATE += gradient_builder.get_update_op_list().copy()
+        score_builder.set_gard_var_wise_list(gradient_builder.post_process_and_get_tensor_list())
 
 optimizer = tf.train.RMSPropOptimizer(0.03, 0.9, 0.9)
 
@@ -183,7 +186,7 @@ with tf.Session(config=config) as sess:
         # take ema
         # sess.run(EMA_TAKE)
 
-        for i in range(int(train_size/BATCH_SIZE*GPU/10000)):
+        for i in range(int(train_size/BATCH_SIZE*GPU/1000)):
             sess.run(STATISTIC_UPDATE, feed_dict={train_flag: False})
             print('statistic: ', i, 'of', int(train_size/BATCH_SIZE*GPU))
 
@@ -261,3 +264,4 @@ with tf.Session(config=config) as sess:
             file.write(str(all_acc)+'\n')
 
     evaluate_step()
+

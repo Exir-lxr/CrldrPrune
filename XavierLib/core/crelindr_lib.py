@@ -528,7 +528,7 @@ class score_update_flow_builder(object):
         reform_trans = sess.run(self.grad_var_wise_list)
         print('Get trans...')
         variances_list = sess.run(self.variance_after_de_correlation_list)
-        print(variances_list)
+        # print(variances_list)
         print('Get variances...')
         mask_list = sess.run(self.mask_list)
         print('Get masks...')
