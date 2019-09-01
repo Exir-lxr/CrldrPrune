@@ -223,7 +223,7 @@ with tf.Session(config=config) as sess:
             t.setDaemon(True)
             t.start()
             tasks.append(t)
-
+        sess.run(tf.global_variables_initializer())
         all_var.restore(sess, './ckpt_731/snas.ckpt')
         iteration = 1000
         for i in range(iteration):
